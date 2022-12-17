@@ -31,10 +31,9 @@ import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.search.fetch.subphase.FetchSourceContext;
 import org.opensearch.search.internal.InternalSearchResponse;
 import org.opensearch.search.profile.SearchProfileShardResults;
-import org.opensearch.search.relevance.client.OpenSearchClient;
+import org.opensearch.search.relevance.client.SearchConfigurationsClient;
 import org.opensearch.search.relevance.configuration.ConfigurationUtils;
 import org.opensearch.search.relevance.configuration.ResultTransformerConfiguration;
-import org.opensearch.search.relevance.configuration.ResultTransformerConfigurationFactory;
 import org.opensearch.search.relevance.transformer.ResultTransformer;
 import org.opensearch.tasks.Task;
 
@@ -42,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -56,15 +54,15 @@ public class SearchActionFilter implements ActionFilter {
 
     private final NamedWriteableRegistry namedWriteableRegistry;
     private final Map<String, ResultTransformer> resultTransformerMap;
-    private final OpenSearchClient openSearchClient;
+    private final SearchConfigurationsClient searchConfigurationsClient;
 
     public SearchActionFilter(Collection<ResultTransformer> supportedResultTransformers,
-                              OpenSearchClient openSearchClient) {
+                              SearchConfigurationsClient searchConfigurationsClient) {
         order = 10; // TODO: Finalize this value
         namedWriteableRegistry = new NamedWriteableRegistry(Collections.emptyList());
         resultTransformerMap = supportedResultTransformers.stream()
                 .collect(Collectors.toMap(t -> t.getConfigurationFactory().getName(), t -> t));
-        this.openSearchClient = openSearchClient;
+        this.searchConfigurationsClient = searchConfigurationsClient;
     }
 
     @Override
@@ -162,7 +160,7 @@ public class SearchActionFilter implements ActionFilter {
                 .toArray(String[]::new);
 
         configs = ConfigurationUtils.getResultTransformersFromIndexConfiguration(
-                openSearchClient.getIndexSettings(indexName, settingNames), resultTransformerMap);
+                searchConfigurationsClient.getIndexSettings(indexName, settingNames), resultTransformerMap);
 
         return configs;
     }

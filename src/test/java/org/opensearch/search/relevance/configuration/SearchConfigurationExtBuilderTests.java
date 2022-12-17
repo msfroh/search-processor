@@ -7,15 +7,21 @@
  */
 package org.opensearch.search.relevance.configuration;
 
+import org.junit.Test;
+import org.opensearch.action.search.SearchRequest;
 import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.io.stream.BytesStreamOutput;
 import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.io.stream.StreamOutput;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.xcontent.DeprecationHandler;
+import org.opensearch.common.xcontent.NamedXContentRegistry;
 import org.opensearch.common.xcontent.XContentBuilder;
 import org.opensearch.common.xcontent.XContentHelper;
 import org.opensearch.common.xcontent.XContentParser;
+import org.opensearch.common.xcontent.XContentParserUtils;
 import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.test.OpenSearchTestCase;
 
 import java.io.IOException;
@@ -124,5 +130,35 @@ public class SearchConfigurationExtBuilderTests extends OpenSearchTestCase {
         SearchConfigurationExtBuilder deserialized = new SearchConfigurationExtBuilder(bytesStreamOutput.bytes().streamInput(),
                 RESULT_TRANSFORMER_CONFIGURATION_FACTORY_MAP);
         assertEquals(searchConfigurationExtBuilder, deserialized);
+    }
+
+
+    public void testDeserializeRequest() throws IOException {
+        String request = "{\n" +
+                "  \"query\": {\n" +
+                "    \"bool\": {\n" +
+                "      \"must\": [\n" +
+                "        {\n" +
+                "          \"function_score\": {\n" +
+                "            \"query\": {\n" +
+                "              \"bool\": {\n" +
+                "                \"should\": [\n" +
+                "                  {\n" +
+                "                    \"match\": {\n" +
+                "                      \"merchandising_keywords\": \"Gas Lift Storage Bed Frame with Arched Bed Head in King\"\n" +
+                "                    }\n" +
+                "                  }\n" +
+                "                ]\n" +
+                "              }\n" +
+                "            }\n" +
+                "          }\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+
+        XContentParser xContentParser = XContentType.JSON.xContent().createParser(this.xContentRegistry(), DeprecationHandler.IGNORE_DEPRECATIONS, request);
+        SearchSourceBuilder.fromXContent(xContentParser);
     }
 }

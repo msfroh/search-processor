@@ -25,6 +25,7 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.search.ShardSearchFailure;
 import org.opensearch.action.support.ActionFilterChain;
 import org.opensearch.client.Client;
+import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.collect.ImmutableOpenMap;
 import org.opensearch.common.document.DocumentField;
@@ -39,7 +40,7 @@ import org.opensearch.search.SearchHit;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.search.internal.InternalSearchResponse;
-import org.opensearch.search.relevance.client.OpenSearchClient;
+import org.opensearch.search.relevance.client.SearchConfigurationsClient;
 import org.opensearch.search.relevance.configuration.ResultTransformerConfiguration;
 import org.opensearch.search.relevance.configuration.ResultTransformerConfigurationFactory;
 import org.opensearch.search.relevance.configuration.SearchConfigurationExtBuilder;
@@ -66,8 +67,9 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testIgnoresDelete() {
         Client client = Mockito.mock(Client.class);
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
-        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), openSearchClient);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
+        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         DeleteRequest deleteRequest = new DeleteRequestBuilder(null, DeleteAction.INSTANCE).request();
@@ -83,8 +85,9 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testIgnoresSearchRequestOnZeroIndices() {
         Client client = Mockito.mock(Client.class);
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
-        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), openSearchClient);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
+        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE).request();
@@ -100,8 +103,9 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testIgnoresSearchRequestOnMultipleIndices() {
         Client client = Mockito.mock(Client.class);
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
-        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), openSearchClient);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
+        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -134,13 +138,18 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
         return client;
     }
 
+    private static ClusterService buildMockClusterService() {
+        return Mockito.mock(ClusterService.class);
+    }
+
     /**
      * Probe the code path where we have one index, but no transformers.
      */
     public void testOperatesOnSingleIndexWithNoTransformers() {
         Client client = buildMockClient("index");
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
-        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), openSearchClient);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
+        SearchActionFilter searchActionFilter = new SearchActionFilter(Collections.emptyList(), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -159,7 +168,8 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
         public static final String NAME = "mock_transformer";
 
         public MockTransformer() {
-            requestTransformer = i -> {};
+            requestTransformer = i -> {
+            };
         }
 
         public MockTransformer(Consumer<SearchRequest> requestTransformer) {
@@ -254,11 +264,12 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testTransformerDoesNotRunWhenNotEnabled() {
         Client client = buildMockClient("index");
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
 
         MockTransformer mockTransformer = new MockTransformer();
 
-        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), openSearchClient);
+        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -281,11 +292,12 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testTransformEnabledInRequest() throws IOException {
         Client client = buildMockClient("index");
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
 
         MockTransformer mockTransformer = new MockTransformer();
 
-        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), openSearchClient);
+        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -362,11 +374,12 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
                 .put(prefix + ".order", 1)
                 .build();
         Client client = buildMockClient("index", enablePluginSettings);
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
 
         MockTransformer mockTransformer = new MockTransformer();
 
-        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), openSearchClient);
+        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -410,7 +423,8 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testOutputUsesOriginalSourceParameters() throws IOException {
         Client client = buildMockClient("index");
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
 
         MockTransformer mockTransformer = new MockTransformer(request -> {
             // Modify the request to always fetch source + request results 0-50
@@ -420,7 +434,7 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
                     .fetchSource(true);
         });
 
-        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), openSearchClient);
+        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)
@@ -485,7 +499,8 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
      */
     public void testReturnEmptyWhenOriginalFromExceedsHitCount() throws IOException {
         Client client = buildMockClient("index");
-        OpenSearchClient openSearchClient = new OpenSearchClient(client);
+        SearchConfigurationsClient searchConfigurationsClient = new SearchConfigurationsClient(buildMockClusterService(), client,
+                Map.of(MOCK_CONFIGURATION_FACTORY.getName(), MOCK_CONFIGURATION_FACTORY));
 
         MockTransformer mockTransformer = new MockTransformer(request -> {
             // Modify the request to always fetch source + request results 0-50
@@ -495,7 +510,7 @@ public class SearchActionFilterTests extends OpenSearchTestCase {
                     .fetchSource(true);
         });
 
-        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), openSearchClient);
+        SearchActionFilter searchActionFilter = new SearchActionFilter(List.of(mockTransformer), searchConfigurationsClient);
 
         Task task = Mockito.mock(Task.class);
         SearchRequest searchRequest = new SearchRequestBuilder(null, SearchAction.INSTANCE)

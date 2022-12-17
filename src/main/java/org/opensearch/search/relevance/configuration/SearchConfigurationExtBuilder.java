@@ -11,7 +11,9 @@ import org.opensearch.common.ParseField;
 import org.opensearch.common.ParsingException;
 import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.io.stream.StreamOutput;
+import org.opensearch.common.xcontent.ToXContent;
 import org.opensearch.common.xcontent.XContentBuilder;
+import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.search.SearchExtBuilder;
 import org.opensearch.search.relevance.transformer.TransformerType;
@@ -113,6 +115,14 @@ public class SearchConfigurationExtBuilder extends SearchExtBuilder {
         for (ResultTransformerConfiguration config : resultTransformerConfigurations) {
             builder.field(config.getTransformerName(), config);
         }
+        return builder.endObject();
+    }
+
+    public XContentBuilder toXContent() throws IOException {
+        // Output to JSON wrapped in an object
+        XContentBuilder builder = XContentFactory.jsonBuilder();
+        builder.startObject();
+        toXContent(builder, ToXContent.EMPTY_PARAMS);
         return builder.endObject();
     }
 
